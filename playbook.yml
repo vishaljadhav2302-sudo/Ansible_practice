@@ -1,30 +1,29 @@
 ---
 - name: Deploy Node.js App
-  hosts: webservers
+  hosts: all
   become: yes
-  vars:
-    app_dir: "/home/ec2-user/my-node-app"
-    node_version: "16.x"
 
   tasks:
     - name: Setup Node.js repository
-      shell: "curl -sL https://rpm.nodesource.com/setup_{{ node_version }} | bash -"
+      shell: "curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -"
 
     - name: Install Node.js
-      yum:
+      apt:
         name: nodejs
         state: present
+        update_cache: yes
 
     - name: Create app directory
       file:
-        path: "{{ app_dir }}"
+        path: /home/ubuntu/app
         state: directory
-        owner: ec2-user
-        group: ec2-user
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
 
     - name: Create a simple Node.js app file
       copy:
-        dest: "{{ app_dir }}/app.js"
+        dest: /home/ubuntu/app/index.js
         content: |
           const http = require('http');
           const port = 3000;
@@ -33,11 +32,14 @@
             res.setHeader('Content-Type', 'text/plain');
             res.end('Hello from Ansible! App is running successfully.\n');
           });
-          server.listen(port, '0.0.0.0', () => {
-            console.log(`Server running at port ${port}/`);
+          server.listen(port, () => {
+            console.log(`Server running at port ${port}`);
           });
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
 
     - name: Start the Node.js application
-      shell: "nohup node app.js > app.log 2>&1 &"
-      args:
-        chdir: "{{ app_dir }}"
+      shell: "nohup node /home/ubuntu/app/index.js > /home/ubuntu/app/app.log 2>&1 &"
+      async: 10
+      poll: 0
