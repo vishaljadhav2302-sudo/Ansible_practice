@@ -1,0 +1,43 @@
+---
+- name: Deploy Node.js App
+  hosts: webservers
+  become: yes
+  vars:
+    app_dir: "/home/ec2-user/my-node-app"
+    node_version: "16.x"
+
+  tasks:
+    - name: Setup Node.js repository
+      shell: "curl -sL https://rpm.nodesource.com/setup_{{ node_version }} | bash -"
+
+    - name: Install Node.js
+      yum:
+        name: nodejs
+        state: present
+
+    - name: Create app directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: ec2-user
+        group: ec2-user
+
+    - name: Create a simple Node.js app file
+      copy:
+        dest: "{{ app_dir }}/app.js"
+        content: |
+          const http = require('http');
+          const port = 3000;
+          const server = http.createServer((req, res) => {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/plain');
+            res.end('Hello from Ansible! App is running successfully.\n');
+          });
+          server.listen(port, '0.0.0.0', () => {
+            console.log(`Server running at port ${port}/`);
+          });
+
+    - name: Start the Node.js application
+      shell: "nohup node app.js > app.log 2>&1 &"
+      args:
+        chdir: "{{ app_dir }}"
